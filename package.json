@@ -1,0 +1,9 @@
+{
+  "name": "cerp",
+  "module": "index.js",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "happy-dom": "^18.0.1"
+  }
+}
