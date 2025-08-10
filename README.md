@@ -50,16 +50,18 @@ pass it the original `customElements` object and a configuration object.
 import cerp from 'cerp';
 
 // The main use case is to replace the global customElements registry with the proxy.
-const customElements = cerp(window.customElements, {
-  // Enables hot reloading (disabled by default)
-  hotReload: true,
-  
-  // Enables delayed disconnects (enabled by default)
-  delayDisconnect: true
+Object.defineProperty(window, 'customElements', {
+  value: cerp(window.customElements, {
+    // Enables hot reloading (disabled by default)
+    hotReload: true,
+    
+    // Enables delayed disconnects (enabled by default)
+    delayDisconnect: true
+  })
 });
 
 // Now, use this proxied registry just like you would the original.
-customElements.define('my-element', MyElement);
+window.customElements.define('my-element', MyElement);
 ```
 
 To integrate with your build system, you can use environment variables to
