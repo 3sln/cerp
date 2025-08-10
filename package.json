@@ -1,5 +1,5 @@
 {
-  "name": "cerp",
+  "name": "@3sln/cerp",
   "module": "index.js",
   "type": "module",
   "devDependencies": {
