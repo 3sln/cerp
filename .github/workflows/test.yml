@@ -1,0 +1,41 @@
+name: Test
+
+# Runs the suite on every pull request.
+#
+# Until this existed, the only thing that ran the tests was `publish.yml`, on a
+# published release — so a regression was discovered in the middle of shipping
+# it, if at all. This is the same `bun run test` as locally: @web/test-runner
+# driving headless Chromium, because cerp wraps one specific piece of browser
+# machinery and almost nothing it does means anything away from a real one.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer commit on the same branch makes an in-flight run pointless.
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # The suite needs a browser to run in. `--with-deps` brings the system
+      # libraries Chromium needs on a bare runner.
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+
+      - name: Test
+        run: bun run test

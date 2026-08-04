@@ -72,3 +72,25 @@ const customElements = cerp(window.customElements, {
   hotReload: process.env.NODE_ENV === 'development',
 });
 ```
+
+### Development
+
+```
+bun install
+bun run test
+```
+
+The suite runs in headless Chromium through
+[`@web/test-runner`](https://modern-web.dev/docs/test-runner/overview/), not
+against a DOM emulation. cerp wraps one specific piece of browser machinery and
+almost nothing it does means anything away from it: whether a definition may be
+replaced, when the browser snapshots `observedAttributes`, whether
+`attributeChangedCallback` fires synchronously and with how many arguments, and
+what order the custom element reaction queue drains a move in are the behaviours
+under test. An emulator supplies its own answers to those.
+
+Each test takes a fresh realm from `createRealm()` in `test-helpers.js` — an
+iframe, and so an empty `CustomElementRegistry`, since a custom element name can
+be defined once per registry and never taken back.
+
+`bun run test:watch` reruns on change, `bun run test:coverage` reports coverage.
