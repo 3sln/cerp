@@ -5,8 +5,9 @@ name: Test
 # Until this existed, the only thing that ran the tests was `publish.yml`, on a
 # published release — so a regression was discovered in the middle of shipping
 # it, if at all. This is the same `bun run test` as locally: @web/test-runner
-# driving headless Chromium, because cerp wraps one specific piece of browser
-# machinery and almost nothing it does means anything away from a real one.
+# driving headless Chromium, because cerp is built entirely out of one specific
+# piece of browser machinery and almost nothing it does means anything away from
+# a real one.
 
 on:
   pull_request:

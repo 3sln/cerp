@@ -1,17 +1,18 @@
 # cerp
 
-> Custom Element Reloading Proxy
+> Custom Element Reloadable Prototypes
 
 A small library for defining custom elements from a plain descriptor instead of
 a class, so a definition can be patched in place while the page is running —
 constructor included.
 
 ```javascript
+// x-counter.js
 import cerp from '@3sln/cerp';
 
 const reg = cerp({hotReload: import.meta.env.DEV});
 
-const counter = reg.define('x-counter', {
+export const definition = {
   attrs: ['count'],
   shadow: {mode: 'open'},
 
@@ -32,15 +33,25 @@ const counter = reg.define('x-counter', {
     this.addEventListener('click', () => this.setAttribute('count', this.count + 1), {signal});
   },
 
-  attr(name, oldValue, value) {
+  attr() {
     this.render();
   },
-});
+
+  reload() {
+    this.render();
+  },
+};
+
+const counter = reg.define('x-counter', definition);
 
 if (import.meta.hot) {
   import.meta.hot.accept(module => counter.update(module.definition));
 }
 ```
+
+Edit `render` and save: every `<x-counter>` on the page redraws, keeping its
+shadow root, its count and its click listener. Edit `init` and the next one
+constructed runs the new version.
 
 ### Why a descriptor and not a class
 
@@ -76,9 +87,10 @@ const reg = cerp({
   // a disconnection. On by default.
   delayDisconnect: true,
 
-  // The realm to define in, and the registry within it.
+  // The realm to define in. Defaults to the current global, and to that
+  // realm's own registry — pass either to define into an iframe.
   window: globalThis,
-  registry: window.customElements,
+  registry: undefined,
 
   warn: message => console.warn(`cerp: ${message}`),
 });
@@ -89,25 +101,38 @@ const reg = cerp({
 callback than a second `define` does. Both do the same thing. With `hotReload`
 off, redefining a name throws rather than silently doing nothing.
 
+`reg.get(name)` returns the descriptor currently in force, or `undefined` if
+this registry did not define the name.
+
 ### The descriptor
 
-| field            | when it applies                                                     |
-| ---------------- | ------------------------------------------------------------------- |
-| `proto`          | reconciled on every define                                          |
-| `attrs`          | reconciled on every define (frozen in production — see below)       |
-| `init`           | once per instance, in the constructor                               |
-| `reload`         | on every live instance when the definition is patched               |
-| `connected`      | on connection, and again after a reload                             |
-| `disconnected`   | on disconnection                                                    |
-| `moved`          | on a move, native or emulated                                       |
-| `adopted`        | on adoption into another document                                   |
-| `attr`           | on a change to an observed attribute                                |
-| `extends`        | fixed at first define                                               |
-| `shadow`         | fixed at first define                                               |
-| `internals`      | fixed at first define                                               |
-| `formAssociated` | fixed at first define                                               |
+| field                                   | when it applies                                         |
+| --------------------------------------- | ------------------------------------------------------- |
+| `proto`                                 | reconciled on every define                              |
+| `attrs`                                 | reconciled on every define (fixed without `hotReload`)  |
+| `init(signal)`                          | once per instance, in the constructor                   |
+| `reload(previous, signal)`              | on every live instance when the definition is patched   |
+| `connected(signal)`                     | on connection, and again after a reload                 |
+| `disconnected()`                        | on disconnection                                        |
+| `moved()`                               | on a move, native or emulated                           |
+| `adopted()`                             | on adoption into another document                       |
+| `attr(name, oldValue, value, namespace)`| on a change to an observed attribute                    |
+| `extends`                               | fixed at first define                                   |
+| `shadow`                                | fixed at first define                                   |
+| `internals`                             | fixed at first define                                   |
+| `formAssociated`                        | fixed at first define                                   |
 
 `this` is the element in every hook and every `proto` member.
+
+`extends` names a built-in tag, for a customized built-in — `{extends: 'button'}`
+is created as `document.createElement('button', {is: 'x-name'})`. Safari does
+not implement customized built-ins at all.
+
+`shadow` takes the options `attachShadow` takes; the root is attached before
+`init` runs, so `this.shadowRoot` is already there. `internals: true` attaches
+`ElementInternals`, reachable as `element[internals]` using the exported symbol.
+Both throw on a second call, which is why cerp owns them and neither can be
+reloaded.
 
 `proto` holds getters, setters and methods, and is merged by property
 descriptor — an accessor stays an accessor and is not invoked while copying. A
@@ -134,21 +159,27 @@ so anything registered against it unwinds by itself:
 
 ```javascript
 connected(signal) {
-  window.addEventListener('resize', this.onResize, {signal});
-  const observer = new ResizeObserver(...);
+  window.addEventListener('resize', () => this.render(), {signal});
+
+  const observer = new ResizeObserver(() => this.render());
+  observer.observe(this);
   signal.addEventListener('abort', () => observer.disconnect());
 }
 ```
 
-Two scopes, also reachable from `proto` members as symbol-keyed properties:
+There are two scopes, each also reachable from `proto` members as a
+symbol-keyed property:
 
 - **`signal`** — the connection. Aborted when the element disconnects, and
-  again on reload just before `connected` re-runs. `element[signal]`.
-- **`instanceSignal`** — the instance. Aborted when the definition reloads,
-  just before `reload` runs. `element[instanceSignal]`.
+  replaced on reload just before `connected` runs again. `element[signal]`.
+- **`instanceSignal`** — the instance. Aborted and replaced when the definition
+  reloads, just before `reload` runs. `element[instanceSignal]`.
 
 ```javascript
 import cerp, {signal, instanceSignal, internals} from '@3sln/cerp';
+
+// inside a proto method
+this[signal].addEventListener('abort', () => subscription.close());
 ```
 
 A reload re-runs `connected` for anything currently connected. That is not
@@ -184,12 +215,13 @@ bun run test
 
 The suite runs in headless Chromium through
 [`@web/test-runner`](https://modern-web.dev/docs/test-runner/overview/), not
-against a DOM emulation. cerp wraps one specific piece of browser machinery and
-almost nothing it does means anything away from it: whether a definition may be
-replaced, when the browser snapshots `observedAttributes`, whether
-`attributeChangedCallback` fires synchronously and with how many arguments, and
-what order the custom element reaction queue drains a move in are the behaviours
-under test. An emulator supplies its own answers to those.
+against a DOM emulation. cerp is built entirely out of one specific piece of
+browser machinery and almost nothing it does means anything away from it:
+whether a definition may be replaced, when the browser snapshots
+`observedAttributes` and `formAssociated`, whether `attributeChangedCallback`
+fires synchronously and with how many arguments, and what order the custom
+element reaction queue drains a move in are the behaviours under test. An
+emulator supplies its own answers to those.
 
 Each test takes a fresh realm from `createRealm()` in `test-helpers.js` — an
 iframe, and so an empty `CustomElementRegistry`, since a custom element name can

@@ -32,8 +32,9 @@ const realms = new Set();
 
 /**
  * A fresh browsing context, standing in for what a DOM emulator's `new Window()`
- * used to provide. Its `customElements` is untouched, so each test starts from
- * an empty registry and may define `x-example` as if for the first time.
+ * used to provide. Its `customElements` is empty, so each test may define
+ * `x-el` as if for the first time — and `cerp({window})` is pointed at it, so
+ * the library defines into the same realm the elements are created in.
  */
 export function createRealm() {
   const frame = document.createElement('iframe');
@@ -51,24 +52,6 @@ export function destroyRealms() {
 // Realms are torn down after every test whether or not the test made one, so no
 // file has to remember to.
 globalThis.afterEach(destroyRealms);
-
-/**
- * Install a cerp proxy over a realm's registry, the way the README says to.
- *
- * `Window.customElements` is a plain readonly attribute, so assigning to it
- * throws in a module's strict mode and silently does nothing outside one.
- * Replacing it takes `defineProperty`, and a suite that reached for the
- * registry any other way would not be testing how the library is actually
- * installed.
- */
-export function installCerp(realm, cerp, options) {
-  const proxy = cerp(realm.window.customElements, options);
-  Object.defineProperty(realm.window, 'customElements', {
-    value: proxy,
-    configurable: true,
-  });
-  return proxy;
-}
 
 /**
  * Let the browser finish what it has queued.

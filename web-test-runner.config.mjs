@@ -25,13 +25,14 @@ function installedChromium() {
 const executablePath = installedChromium();
 
 // Tests run against a real browser rather than a DOM emulation, because cerp is
-// a wrapper around one specific piece of browser machinery — the custom element
-// registry — and almost nothing it does means anything away from it. Whether a
-// definition may be replaced, when the browser snapshots `observedAttributes`,
-// whether `attributeChangedCallback` fires synchronously, what order the
-// reaction queue drains a move in, and whether `connectedMoveCallback` exists at
-// all are the behaviours under test. An emulator supplies its own answers to
-// those, so a test passing against one says nothing about a browser.
+// built entirely out of one specific piece of browser machinery — the custom
+// element registry — and almost nothing it does means anything away from it.
+// Whether a definition may be replaced, when the browser snapshots
+// `observedAttributes` and `formAssociated`, whether `attributeChangedCallback`
+// fires synchronously and with how many arguments, what order the reaction queue
+// drains a move in, and whether `connectedMoveCallback` exists at all are the
+// behaviours under test. An emulator supplies its own answers to those, so a
+// test passing against one says nothing about a browser.
 export default {
   files: ['*.test.js'],
   nodeResolve: true,
