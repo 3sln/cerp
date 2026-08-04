@@ -1,14 +1,15 @@
 {
   "name": "@3sln/cerp",
   "version": "0.0.1",
-  "description": "A CustomElementRegistry proxy adding hot reloading and delayed disconnects.",
+  "description": "Hot patchable custom element definitions.",
   "main": "index.js",
   "module": "index.js",
   "type": "module",
+  "sideEffects": false,
   "author": "Ray Stubbs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/3sln/cerp.git"
+    "url": "git+https://github.com/3sln/cerp.git"
   },
   "license": "MIT",
   "keywords": [
@@ -16,7 +17,8 @@
     "customElements",
     "web components",
     "hot reload",
-    "hmr"
+    "hmr",
+    "hot module replacement"
   ],
   "exports": {
     ".": "./index.js",
