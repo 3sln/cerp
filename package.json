@@ -1,10 +1,45 @@
 {
   "name": "@3sln/cerp",
+  "version": "0.1.0",
+  "description": "Hot patchable custom element definitions.",
+  "main": "index.js",
   "module": "index.js",
   "type": "module",
-  "version": "0.0.1",
+  "sideEffects": false,
+  "author": "Ray Stubbs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3sln/cerp.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "custom elements",
+    "customElements",
+    "web components",
+    "hot reload",
+    "hmr",
+    "hot module replacement"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js"
+  ],
   "devDependencies": {
     "@types/bun": "latest",
-    "happy-dom": "^18.0.1"
+    "@web/test-runner": "^1.0.0",
+    "@web/test-runner-playwright": "^1.0.0",
+    "chai": "^6.2.2",
+    "playwright": "^1.62.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "web-test-runner",
+    "test:watch": "web-test-runner --watch",
+    "test:coverage": "web-test-runner --coverage"
   }
 }
